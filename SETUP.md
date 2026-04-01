@@ -21,8 +21,11 @@ A three-layer memory system for [OpenClaw](https://openclaw.ai):
 - **OpenClaw** installed and running ([docs](https://docs.openclaw.ai))
 - **Docker** + **Docker Compose** v2
 - **Ubuntu 22.04+** or **macOS 13+**
-- An **OpenAI API key** (for Graphiti entity extraction; searches are free)
+- **OpenAI API key** (for entity extraction — gpt-4.1-mini recommended)
+- **Google AI API key** (for Gemini Embedding 2 — significantly cheaper than OpenAI embeddings)
 - **1GB RAM** minimum (Neo4j needs ~512MB)
+
+> **Why Gemini Embedding 2?** It costs ~$0.0001/1K characters vs OpenAI's $0.00013/1K tokens. For memory search (the high-volume operation), this is dramatically cheaper. Entity extraction still uses OpenAI.
 
 ---
 
@@ -43,11 +46,13 @@ cd ~/graphiti-memory
 # Create services directory
 mkdir -p ~/services/graphiti
 
-# Copy the Docker Compose file
+# Copy the Docker Compose file + startup script
 cp ~/graphiti-memory/docker-compose.yml ~/services/graphiti/
+cp ~/graphiti-memory/start-graphiti.sh ~/services/graphiti/
 
-# Set your OpenAI API key (required for embeddings)
-export OPENAI_API_KEY="sk-your-key-here"
+# Set your API keys
+export OPENAI_API_KEY="sk-your-openai-key"        # entity extraction (gpt-4.1-mini)
+export GEMINI_API_KEY="AIzaSy..."                 # Gemini Embedding 2 (memory search)
 
 # Start the stack
 cd ~/services/graphiti
@@ -279,13 +284,29 @@ Your OpenClaw Agent
 
 ## Cost
 
-| Component | Cost |
-|-----------|------|
-| QMD vector search | Free (uses Gemini embeddings) |
-| Graphiti ingestion | OpenAI API calls during sync only |
-| Graphiti search | Free (local Neo4j query) |
-| Neo4j storage | Free (local) |
-| **Typical monthly** | **< $1/month** for a busy 5-agent setup |
+| Component | Technology | Cost |
+|-----------|------------|------|
+| Memory search (high volume) | Gemini Embedding 2 | $0.0001/1K chars |
+| Entity extraction (low volume) | GPT-4.1-mini | $0.00013/1K tokens |
+| Graphiti search | Local Neo4j | Free |
+| Neo4j storage | Local | Free |
+| **Typical monthly** | | **< $1/month** for a busy 5-agent setup |
+
+### How the Gemini Embedding 2 Patch Works
+
+Graphiti uses OpenAI's `text-embedding-ada-002` format for vector search. The `start-graphiti.sh` script monkey-patches `OpenAIEmbedder.create` at startup to route calls through Gemini Embedding 2 instead:
+
+```
+Agent → Graphiti API → OpenAIEmbedder.create (patched) → Gemini Embedding 2 API
+                                                         ↓
+                                                      Neo4j (stored as vectors)
+```
+
+Verify the patch is loaded:
+```bash
+docker compose logs graphiti 2>&1 | grep "Gemini Embedding 2"
+# Expected: [start-graphiti.sh] Gemini Embedding 2 patch applied
+```
 
 ---
 
