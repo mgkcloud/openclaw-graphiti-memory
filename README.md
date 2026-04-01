@@ -2,6 +2,8 @@
 
 A complete three-layer memory system for [OpenClaw](https://openclaw.ai) multi-agent setups.
 
+**New to this?** Start with [SETUP.md](SETUP.md) for a complete fresh-instance install guide.
+
 ## Architecture
 
 ```
@@ -55,6 +57,8 @@ A complete three-layer memory system for [OpenClaw](https://openclaw.ai) multi-a
 ---
 
 ## Setup
+
+**For a fresh VPS/instance install, see [SETUP.md](SETUP.md)** — the full step-by-step guide with zero assumptions.
 
 ### Prerequisites
 
